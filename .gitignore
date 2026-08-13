@@ -1,0 +1,26 @@
+# Segredos
+.env
+
+# Logs
+*.log
+
+# Dados do PostgreSQL (mantém o diretório versionado, ignora o conteúdo)
+data/*
+!data/postgres/
+data/postgres/*
+!data/postgres/.gitkeep
+
+# Backups
+backups/*
+!backups/.gitkeep
+
+# Mídia do Tandoor
+apps/tandoor/media/*
+!apps/tandoor/media/.gitkeep
+
+# Dados do Grocy
+apps/grocy/data/*
+!apps/grocy/data/.gitkeep
+
+# Sistema operacional
+.DS_Store

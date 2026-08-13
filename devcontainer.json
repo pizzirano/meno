@@ -1,0 +1,12 @@
+{
+  "name": "Meno",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "forwardPorts": [8080, 9283],
+  "portsAttributes": {
+    "8080": { "label": "Tandoor" },
+    "9283": { "label": "Grocy" }
+  }
+}
