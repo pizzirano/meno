@@ -1,9 +1,24 @@
 name: meno
 
+x-wger-env: &wger-env
+  SECRET_KEY: ${WGER_SECRET_KEY}
+  SITE_URL: ${WGER_SITE_URL}
+  CSRF_TRUSTED_ORIGINS: ${WGER_CSRF_TRUSTED_ORIGINS}
+  DJANGO_DB_ENGINE: django.db.backends.postgresql
+  DJANGO_DB_DATABASE: ${WGER_POSTGRES_DB}
+  DJANGO_DB_USER: ${POSTGRES_USER}
+  DJANGO_DB_PASSWORD: ${POSTGRES_PASSWORD}
+  DJANGO_DB_HOST: postgres
+  DJANGO_DB_PORT: "5432"
+  TIME_ZONE: ${TZ}
+  TIMEZONE: ${TZ}
+  REDIS_HOST: wger_cache
+  REDIS_PORT: "6379"
+  REDIS_DB: "1"
+  CELERY_BROKER_URL: redis://wger_cache:6379/2
+  CELERY_RESULT_BACKEND: redis://wger_cache:6379/2
+
 services:
-  # ---------------------------------------------------------------
-  # PostgreSQL — banco de dados do Tandoor
-  # ---------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
     container_name: meno-postgres
@@ -12,8 +27,10 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      WGER_POSTGRES_DB: ${WGER_POSTGRES_DB}
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
+      - ./data/postgres-init:/docker-entrypoint-initdb.d:ro
     networks:
       - meno
     healthcheck:
@@ -23,10 +40,6 @@ services:
       retries: 10
       start_period: 30s
 
-  # ---------------------------------------------------------------
-  # Tandoor Recipes — receitas e planejamento de refeições
-  # A imagem já traz nginx embutido e expõe a porta 80 do container.
-  # ---------------------------------------------------------------
   tandoor:
     image: vabene1111/recipes:latest
     container_name: meno-tandoor
@@ -54,10 +67,6 @@ services:
     networks:
       - meno
 
-  # ---------------------------------------------------------------
-  # Grocy — despensa, estoque, compras e organização doméstica
-  # Usa SQLite (armazenamento padrão do projeto), dentro de /config.
-  # ---------------------------------------------------------------
   grocy:
     image: lscr.io/linuxserver/grocy:latest
     container_name: meno-grocy
@@ -73,9 +82,55 @@ services:
     networks:
       - meno
 
+  wger_cache:
+    image: redis:7-alpine
+    container_name: meno-wger-cache
+    restart: unless-stopped
+    volumes:
+      - wger_redis_data:/data
+    networks:
+      - meno
+
+  wger:
+    image: wger/server:latest
+    container_name: meno-wger
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      wger_cache:
+        condition: service_started
+    environment:
+      <<: *wger-env
+    ports:
+      - "${WGER_HTTP_PORT}:8000"
+    volumes:
+      - ./apps/wger/static:/home/wger/static
+      - ./apps/wger/media:/home/wger/media
+    networks:
+      - meno
+
+  wger_celery_worker:
+    image: wger/server:latest
+    container_name: meno-wger-celery-worker
+    restart: unless-stopped
+    command: celery -A wger worker --loglevel=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      wger_cache:
+        condition: service_started
+    environment:
+      <<: *wger-env
+    volumes:
+      - ./apps/wger/media:/home/wger/media
+    networks:
+      - meno
+
 networks:
   meno:
     driver: bridge
 
 volumes:
   tandoor_static:
+  wger_redis_data:

@@ -24,3 +24,10 @@ apps/grocy/data/*
 
 # Sistema operacional
 .DS_Store
+
+# wger
+apps/wger/static/*
+!apps/wger/static/.gitkeep
+apps/wger/media/*
+!apps/wger/media/.gitkeep
+!data/postgres-init/
