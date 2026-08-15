@@ -10,13 +10,18 @@ x-wger-env: &wger-env
   DJANGO_DB_PASSWORD: ${POSTGRES_PASSWORD}
   DJANGO_DB_HOST: postgres
   DJANGO_DB_PORT: "5432"
-  TIME_ZONE: ${TZ}
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: ${WGER_POSTGRES_DB}
+  POSTGRES_USER: ${POSTGRES_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
   TIMEZONE: ${TZ}
   REDIS_HOST: wger_cache
   REDIS_PORT: "6379"
   REDIS_DB: "1"
   CELERY_BROKER_URL: redis://wger_cache:6379/2
   CELERY_RESULT_BACKEND: redis://wger_cache:6379/2
+  DJANGO_COLLECTSTATIC_ON_STARTUP: "true"
 
 services:
   postgres:
@@ -102,11 +107,26 @@ services:
         condition: service_started
     environment:
       <<: *wger-env
-    ports:
-      - "${WGER_HTTP_PORT}:8000"
+    expose:
+      - "8000"
     volumes:
       - ./apps/wger/static:/home/wger/static
       - ./apps/wger/media:/home/wger/media
+    networks:
+      - meno
+
+  wger_nginx:
+    image: nginx:alpine
+    container_name: meno-wger-nginx
+    restart: unless-stopped
+    depends_on:
+      - wger
+    volumes:
+      - ./apps/wger/static:/wger/static:ro
+      - ./apps/wger/media:/wger/media:ro
+      - ./apps/wger/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "${WGER_HTTP_PORT}:80"
     networks:
       - meno
 
